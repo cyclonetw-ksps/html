@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國姓國小進修部管理系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e1e1e6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(40, 42, 58, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            color: #a1a1aa;
+            font-size: 1.2em;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(40, 42, 58, 0.9);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 10px;
+            color: #a1a1aa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .nav-tab.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+        }
+        
+        .nav-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.15);
+            color: #e1e1e6;
+        }
+        
+        .content-section {
+            display: none;
+            background: rgba(40, 42, 58, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #fbbf24;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .quick-link {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .quick-link:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.3));
+        }
+        
+        .iframe-container {
+            width: 100%;
+            height: 800px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #a1a1aa;
+            font-size: 1.1em;
+        }
+        
+        .export-controls {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .export-title {
+            color: #a855f7;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .export-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto auto;
+            gap: 15px;
+            align-items: end;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fbbf24;
+            font-size: 1em;
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(30, 30, 46, 0.8);
+            color: #e1e1e6;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+        
+        .export-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #a855f7, #9333ea);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(168, 85, 247, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+            }
+            
+            .content-section {
+                padding: 20px;
+            }
+            
+            .export-row {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .iframe-container {
+                height: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>🏫 國姓國小進修部管理系統</h1>
+            <p>整合式教學管理與學生記錄平台</p>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('dashboard')">📊 總覽</button>
+            <button class="nav-tab" onclick="switchTab('teaching-log')">📝 教學日誌</button>
+            <button class="nav-tab" onclick="switchTab('attendance')">📋 出席記錄</button>
+            <button class="nav-tab" onclick="switchTab('reports')">📈 報表管理</button>
+        </div>
+        
+        <!-- 總覽頁面 -->
+        <div id="dashboard" class="content-section active">
+            <h2 class="section-title">系統總覽</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalLogs">-</div>
+                    <div class="stat-label">教學日誌筆數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAttendance">-</div>
+                    <div class="stat-label">出席記錄筆數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeStudents">8</div>
+                    <div class="stat-label">在學學生人數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeTeachers">4</div>
+                    <div class="stat-label">授課教師人數</div>
+                </div>
+            </div>
+            
+            <div class="quick-links">
+                <div class="quick-link" onclick="switchTab('teaching-log')">
+                    <h3>📝 新增教學日誌</h3>
+                    <p>記錄每日授課內容</p>
+                </div>
+                <div class="quick-link" onclick="switchTab('attendance')">
+                    <h3>📋 學生出席記錄</h3>
+                    <p>管理學生出缺席狀況</p>
+                </div>
+                <div class="quick-link" onclick="switchTab('reports')">
+                    <h3>📊 匯出月報表</h3>
+                    <p>生成統計分析報告</p>
+                </div>
+                <div class="quick-link" onclick="openGoogleSheet()">
+                    <h3>📄 查看原始數據</h3>
+                    <p>直接訪問Google Sheets</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 教學日誌頁面 -->
+        <div id="teaching-log" class="content-section">
+            <h2 class="section-title">教學日誌記錄</h2>
+            <div class="iframe-container">
+                <!-- GitHub Pages 路徑 -->
+                <iframe src="./teaching_log.html" id="teachingLogFrame"></iframe>
+            </div>
+        </div>
+        
+        <!-- 出席記錄頁面 -->
+        <div id="attendance" class="content-section">
+            <h2 class="section-title">學生出席記錄</h2>
+            <div class="iframe-container">
+                <!-- GitHub Pages 路徑 -->
+                <iframe src="./attendance.html" id="attendanceFrame"></iframe>
+            </div>
+        </div>
+        
+        <!-- 報表管理頁面 -->
+        <div id="reports" class="content-section">
+            <h2 class="section-title">報表管理中心</h2>
+            
+            <div class="export-controls">
+                <div class="export-title">📊 教學日誌月報表</div>
+                <div class="export-row">
+                    <div class="form-group">
+                        <label class="form-label">年份 (民國)</label>
+                        <select id="logYear" class="form-select">
+                            <option value="114">114年</option>
+                            <option value="115">115年</option>
+                            <option value="116">116年</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">月份</label>
+                        <select id="logMonth" class="form-select">
+                            <option value="01">1月</option>
+                            <option value="02">2月</option>
+                            <option value="03">3月</option>
+                            <option value="04">4月</option>
+                            <option value="05">5月</option>
+                            <option value="06">6月</option>
+                            <option value="07">7月</option>
+                            <option value="08">8月</option>
+                            <option value="09">9月</option>
+                            <option value="10">10月</option>
+                            <option value="11">11月</option>
+                            <option value="12">12月</option>
+                        </select>
+                    </div>
+                    <button class="export-btn" onclick="exportTeachingLog()">📄 匯出教學日誌</button>
+                    <button class="export-btn" onclick="exportTeacherHours()">⏱️ 匯出鐘點統計</button>
+                </div>
+            </div>
+            
+            <div class="export-controls">
+                <div class="export-title">📋 學生出席月報表</div>
+                <div class="export-row">
+                    <div class="form-group">
+                        <label class="form-label">年份 (民國)</label>
+                        <select id="attendanceYear" class="form-select">
+                            <option value="114">114年</option>
+                            <option value="115">115年</option>
+                            <option value="116">116年</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">月份</label>
+                        <select id="attendanceMonth" class="form-select">
+                            <option value="01">1月</option>
+                            <option value="02">2月</option>
+                            <option value="03">3月</option>
+                            <option value="04">4月</option>
+                            <option value="05">5月</option>
+                            <option value="06">6月</option>
+                            <option value="07">7月</option>
+                            <option value="08">8月</option>
+                            <option value="09">9月</option>
+                            <option value="10">10月</option>
+                            <option value="11">11月</option>
+                            <option value="12">12月</option>
+                        </select>
+                    </div>
+                    <button class="export-btn" onclick="exportAttendanceReport()">📊 匯出出席報表</button>
+                    <button class="export-btn" onclick="exportStudentStats()">👥 匯出學生統計</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切換頁面標籤
+        function switchTab(tabName) {
+            // 隱藏所有內容區塊
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 移除所有標籤的active狀態
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 顯示選中的內容區塊
+            document.getElementById(tabName).classList.add('active');
+            
+            // 添加選中標籤的active狀態
+            event.target.classList.add('active');
+        }
+        
+        // 設定當前年月
+        function initializeDates() {
+            const today = new Date();
+            const currentYear = (today.getFullYear() - 1911).toString();
+            const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+            
+            document.getElementById('logYear').value = currentYear;
+            document.getElementById('logMonth').value = currentMonth;
+            document.getElementById('attendanceYear').value = currentYear;
+            document.getElementById('attendanceMonth').value = currentMonth;
+        }
+        
+        // 權限驗證函數
+        function checkExportPermission() {
+            const password = prompt('🔐 請輸入管理員密碼以匯出報表：');
+            const correctPassword = 'ksps2721018'; // 可在此處修改密碼
+            
+            if (password === null) {
+                // 使用者點擊取消
+                return false;
+            }
+            
+            if (password !== correctPassword) {
+                alert('❌ 密碼錯誤，無權限匯出報表！\n請聯繫系統管理員。');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 匯出教學日誌
+        function exportTeachingLog() {
+            // 權限檢查
+            if (!checkExportPermission()) return;
+            
+            const year = document.getElementById('logYear').value;
+            const month = document.getElementById('logMonth').value;
+            
+            const btn = document.querySelector('[onclick="exportTeachingLog()"]');
+            btn.disabled = true;
+            btn.textContent = '📋 處理中...';
+            
+            // 替換為您的教學日誌 Google Apps Script Web App URL
+            const TEACHING_LOG_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOA2g3xTC1oP43Jh9fGFdPhsCH_LLMWLjUauyV6SE_rnfkEfv9X9rwaoMainPgc5zX/exec';
+            
+            if (TEACHING_LOG_SCRIPT_URL.includes('YOUR_TEACHING_LOG_SCRIPT')) {
+                alert('請先設定教學日誌 Google Apps Script URL');
+                btn.disabled = false;
+                btn.textContent = '📄 匯出教學日誌';
+                return;
+            }
+            
+            const exportUrl = `${TEACHING_LOG_SCRIPT_URL}?action=export_log&year=${year}&month=${month}`;
+            
+            fetch(exportUrl)
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '📄 匯出教學日誌';
+                
+                if (data.success) {
+                    alert(`✅ 教學日誌匯出成功！\n檔案名稱：${data.fileName}\n記錄筆數：${data.recordCount}筆\n\n請到您的Google Drive查看匯出的檔案。`);
+                } else {
+                    alert(`❌ 匯出失敗：${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('匯出教學日誌錯誤:', error);
+                btn.disabled = false;
+                btn.textContent = '📄 匯出教學日誌';
+                alert('❌ 匯出失敗，請檢查網路連線或稍後再試。');
+            });
+        }
+        
+        // 匯出教師鐘點統計
+        function exportTeacherHours() {
+            // 權限檢查
+            if (!checkExportPermission()) return;
+            
+            const year = document.getElementById('logYear').value;
+            const month = document.getElementById('logMonth').value;
+            
+            const btn = document.querySelector('[onclick="exportTeacherHours()"]');
+            btn.disabled = true;
+            btn.textContent = '⏱️ 處理中...';
+            
+            // 替換為您的教學日誌 Google Apps Script Web App URL
+            const TEACHING_LOG_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOA2g3xTC1oP43Jh9fGFdPhsCH_LLMWLjUauyV6SE_rnfkEfv9X9rwaoMainPgc5zX/exec';
+            
+            if (TEACHING_LOG_SCRIPT_URL.includes('YOUR_TEACHING_LOG_SCRIPT')) {
+                alert('請先設定教學日誌 Google Apps Script URL');
+                btn.disabled = false;
+                btn.textContent = '⏱️ 匯出鐘點統計';
+                return;
+            }
+            
+            const exportUrl = `${TEACHING_LOG_SCRIPT_URL}?action=export_hours&year=${year}&month=${month}`;
+            
+            fetch(exportUrl)
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '⏱️ 匯出鐘點統計';
+                
+                if (data.success) {
+                    alert(`✅ 教師鐘點統計匯出成功！\n檔案名稱：${data.fileName}\n教師人數：${data.teacherCount}位\n總鐘點數：${data.totalHours}節\n\n請到您的Google Drive查看匯出的檔案。`);
+                } else {
+                    alert(`❌ 匯出失敗：${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('匯出教師鐘點統計錯誤:', error);
+                btn.disabled = false;
+                btn.textContent = '⏱️ 匯出鐘點統計';
+                alert('❌ 匯出失敗，請檢查網路連線或稍後再試。');
+            });
+        }
+        
+        // 匯出出席報表
+        function exportAttendanceReport() {
+            // 權限檢查
+            if (!checkExportPermission()) return;
+            
+            const year = document.getElementById('attendanceYear').value;
+            const month = document.getElementById('attendanceMonth').value;
+            
+            const btn = document.querySelector('[onclick="exportAttendanceReport()"]');
+            btn.disabled = true;
+            btn.textContent = '📊 處理中...';
+            
+            // 替換為您的出席記錄 Google Apps Script Web App URL
+            const ATTENDANCE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLKc9pT7PrZwoBkDqvrYs-5FhMFlDlG-uONqRz9si5TbhEl-27xu4zqemaHuoG30k0FQ/exec';
+            
+            if (ATTENDANCE_SCRIPT_URL.includes('YOUR_ATTENDANCE_SCRIPT')) {
+                alert('請先設定出席記錄 Google Apps Script URL');
+                btn.disabled = false;
+                btn.textContent = '📊 匯出出席報表';
+                return;
+            }
+            
+            const exportUrl = `${ATTENDANCE_SCRIPT_URL}?action=export&year=${year}&month=${month}`;
+            
+            fetch(exportUrl)
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '📊 匯出出席報表';
+                
+                if (data.success) {
+                    alert(`✅ 出席報表匯出成功！\n檔案名稱：${data.fileName}\n記錄筆數：${data.recordCount}筆\n在學學生：${data.activeStudents.length}位\n\n請到您的Google Drive查看匯出的檔案。`);
+                } else {
+                    alert(`❌ 匯出失敗：${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('匯出出席報表錯誤:', error);
+                btn.disabled = false;
+                btn.textContent = '📊 匯出出席報表';
+                alert('❌ 匯出失敗，請檢查網路連線或稍後再試。');
+            });
+        }
+        
+        // 匯出學生統計
+        function exportStudentStats() {
+            // 權限檢查
+            if (!checkExportPermission()) return;
+            
+            const year = document.getElementById('attendanceYear').value;
+            const month = document.getElementById('attendanceMonth').value;
+            
+            const btn = document.querySelector('[onclick="exportStudentStats()"]');
+            btn.disabled = true;
+            btn.textContent = '👥 處理中...';
+            
+            // 替換為您的出席記錄 Google Apps Script Web App URL
+            const ATTENDANCE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLKc9pT7PrZwoBkDqvrYs-5FhMFlDlG-uONqRz9si5TbhEl-27xu4zqemaHuoG30k0FQ/exec';
+            
+            if (ATTENDANCE_SCRIPT_URL.includes('YOUR_ATTENDANCE_SCRIPT')) {
+                alert('請先設定出席記錄 Google Apps Script URL');
+                btn.disabled = false;
+                btn.textContent = '👥 匯出學生統計';
+                return;
+            }
+            
+            const exportUrl = `${ATTENDANCE_SCRIPT_URL}?action=export_stats&year=${year}&month=${month}`;
+            
+            fetch(exportUrl)
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '👥 匯出學生統計';
+                
+                if (data.success) {
+                    const summaryText = `✅ 學生統計表匯出成功！
+                    
+📊 統計摘要：
+• 檔案名稱：${data.fileName}
+• 在學學生：${data.totalStudents}位
+• 班級平均出席率：${data.avgAttendanceRate}%
+• 優良學生：${data.excellentStudents}位 (出席率≥90%)
+• 需關注學生：${data.needCareStudents}位 (出席率<70%)
+
+📁 請到您的Google Drive查看匯出的檔案。`;
+                    
+                    alert(summaryText);
+                } else {
+                    alert(`❌ 匯出失敗：${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('匯出學生統計錯誤:', error);
+                btn.disabled = false;
+                btn.textContent = '👥 匯出學生統計';
+                alert('❌ 匯出失敗，請檢查網路連線或稍後再試。');
+            });
+        }
+        
+        // 開啟Google Sheet
+        function openGoogleSheet() {
+            alert('請設定您的Google Sheet連結');
+        }
+        
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDates();
+            
+            // 這裡可以加入載入統計數據的邏輯
+            // loadStatistics();
+        });
+        
+        // 載入統計數據（示例）
+        function loadStatistics() {
+            // 這裡會實際從Google Sheets API或Apps Script獲取數據
+            document.getElementById('totalLogs').textContent = '---';
+            document.getElementById('totalAttendance').textContent = '---';
+        }
+    </script>
+</body>
+</html>

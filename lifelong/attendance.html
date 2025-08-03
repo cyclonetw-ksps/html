@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國姓國小進修部學生出席記錄系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e1e1e6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(40, 42, 58, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.2em;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            color: #a1a1aa;
+            font-size: 1.1em;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fbbf24;
+            font-size: 1.1em;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(30, 30, 46, 0.8);
+            color: #e1e1e6;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+            background: rgba(30, 30, 46, 0.95);
+        }
+        
+        .attendance-section {
+            margin-top: 30px;
+        }
+        
+        .attendance-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 15px;
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 0;
+        }
+        
+        .attendance-header h3 {
+            color: white;
+            font-size: 1.3em;
+            text-align: center;
+        }
+        
+        .student-table {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: none;
+        }
+        
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            background: rgba(59, 130, 246, 0.2);
+            padding: 15px;
+            font-weight: 600;
+            color: #60a5fa;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .student-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background-color 0.3s ease;
+        }
+        
+        .student-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .student-row:last-child {
+            border-bottom: none;
+        }
+        
+        .student-name {
+            font-weight: 500;
+            color: #e1e1e6;
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .custom-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-checkbox.present {
+            border-color: #10b981;
+        }
+        
+        .custom-checkbox.present:checked {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: #10b981;
+        }
+        
+        .custom-checkbox.present:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .custom-checkbox.absent {
+            border-color: #f59e0b;
+        }
+        
+        .custom-checkbox.absent:checked {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-color: #f59e0b;
+        }
+        
+        .custom-checkbox.absent:checked::after {
+            content: '△';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+        
+        .submit-btn:disabled {
+            background: rgba(107, 114, 128, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #fbbf24;
+        }
+        
+        .success-message {
+            display: none;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #10b981;
+            text-align: center;
+        }
+        
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #ef4444;
+            text-align: center;
+        }
+        
+        .export-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .export-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .export-header h3 {
+            color: #a855f7;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .export-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 20px;
+            align-items: end;
+            margin-bottom: 20px;
+        }
+        
+        .export-btn {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #a855f7, #9333ea);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-header, .student-row {
+                grid-template-columns: 2fr 1fr 1fr;
+                font-size: 14px;
+            }
+            
+            .export-controls {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 國姓國小進修部學生出席記錄系統</h1>
+            <p>智能化學生出缺席管理平台</p>
+        </div>
+        
+        <form id="attendanceForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="date">📅 日期</label>
+                    <input type="date" id="date" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="weekday">📆 星期</label>
+                    <input type="text" id="weekday" class="form-input" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="course">📚 課程</label>
+                    <select id="course" class="form-select" required>
+                        <option value="">請選擇課程</option>
+                        <option value="國語與彈性">國語與彈性</option>
+                        <option value="社會生活與彈性">社會生活與彈性</option>
+                        <option value="數學與科學">數學與科學</option>
+                        <option value="國語與英文">國語與英文</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="attendance-section">
+                <div class="attendance-header">
+                    <h3>👥 學生出席記錄</h3>
+                </div>
+                
+                <div class="student-table">
+                    <div class="table-header">
+                        <div>學生姓名</div>
+                        <div>出席 ✓</div>
+                        <div>請假 △</div>
+                    </div>
+                    <div id="studentList"></div>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn" class="submit-btn">
+                💾 送出出席記錄
+            </button>
+        </form>
+        
+        <div id="loading" class="loading">
+            <p>📤 正在提交數據...</p>
+        </div>
+        
+        <div id="successMessage" class="success-message">
+            <p>✅ 出席記錄已成功提交！</p>
+        </div>
+        
+        <div id="errorMessage" class="error-message">
+            <p>❌ 提交失敗，請檢查網路連線或稍後再試。</p>
+        </div>
+        
+        <div class="export-section">
+            <div class="export-header">
+                <h3>📊 月報表匯出</h3>
+                <p>自動生成月份出席統計報表</p>
+            </div>
+            
+            <div class="export-controls">
+                <div class="form-group">
+                    <label class="form-label" for="exportYear">年份 (民國)</label>
+                    <select id="exportYear" class="form-select">
+                        <option value="114">114年</option>
+                        <option value="115">115年</option>
+                        <option value="116">116年</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="exportMonth">月份</label>
+                    <select id="exportMonth" class="form-select">
+                        <option value="01">1月</option>
+                        <option value="02">2月</option>
+                        <option value="03">3月</option>
+                        <option value="04">4月</option>
+                        <option value="05">5月</option>
+                        <option value="06">6月</option>
+                        <option value="07">7月</option>
+                        <option value="08">8月</option>
+                        <option value="09">9月</option>
+                        <option value="10">10月</option>
+                        <option value="11">11月</option>
+                        <option value="12">12月</option>
+                    </select>
+                </div>
+                
+                <button type="button" id="exportBtn" class="export-btn">
+                    📥 匯出報表
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 學生名單 - 可在此修改
+        const students = [
+            '阮氏彫', '阮紅妮', '阮玄莊', '范宥嫺', 
+            '黎美香', '馬銨妤', '陳錦江', '黎氏銀'
+        ];
+        
+        // 設定今天的日期
+        document.getElementById('date').valueAsDate = new Date();
+        
+        // 星期對應表
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        
+        // 日期變更時自動更新星期
+        document.getElementById('date').addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const weekday = weekdays[selectedDate.getDay()];
+            document.getElementById('weekday').value = weekday;
+        });
+        
+        // 初始化星期顯示
+        const today = new Date();
+        document.getElementById('weekday').value = weekdays[today.getDay()];
+        
+        // 設定當前年月
+        const currentYear = today.getFullYear() - 1911; // 轉換為民國年
+        const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('exportYear').value = currentYear.toString();
+        document.getElementById('exportMonth').value = currentMonth;
+        
+        // 生成學生列表
+        function generateStudentList() {
+            const studentListContainer = document.getElementById('studentList');
+            studentListContainer.innerHTML = '';
+            
+            students.forEach((student, index) => {
+                const studentRow = document.createElement('div');
+                studentRow.className = 'student-row';
+                studentRow.innerHTML = `
+                    <div class="student-name">${student}</div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" class="custom-checkbox present" 
+                               id="present_${index}" data-student="${student}" data-type="present">
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" class="custom-checkbox absent" 
+                               id="absent_${index}" data-student="${student}" data-type="absent">
+                    </div>
+                `;
+                studentListContainer.appendChild(studentRow);
+            });
+            
+            // 添加互斥邏輯
+            document.querySelectorAll('.custom-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        const studentName = this.getAttribute('data-student');
+                        const type = this.getAttribute('data-type');
+                        const otherType = type === 'present' ? 'absent' : 'present';
+                        
+                        // 取消同學生的另一個選項
+                        const otherCheckbox = document.querySelector(`input[data-student="${studentName}"][data-type="${otherType}"]`);
+                        if (otherCheckbox) {
+                            otherCheckbox.checked = false;
+                        }
+                    }
+                });
+            });
+        }
+        
+        // 初始化學生列表
+        generateStudentList();
+        
+        // 表單提交處理
+        document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 收集表單數據
+            const formData = {
+                date: document.getElementById('date').value,
+                weekday: document.getElementById('weekday').value,
+                course: document.getElementById('course').value,
+                attendance: {}
+            };
+            
+            // 驗證必填欄位
+            if (!formData.date || !formData.course) {
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').innerHTML = '<p>❌ 請填寫日期和課程！</p>';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').style.display = 'none';
+                }, 3000);
+                return;
+            }
+            
+            // 收集出席數據
+            students.forEach(student => {
+                const presentCheckbox = document.querySelector(`input[data-student="${student}"][data-type="present"]`);
+                const absentCheckbox = document.querySelector(`input[data-student="${student}"][data-type="absent"]`);
+                
+                if (presentCheckbox.checked) {
+                    formData.attendance[student] = '✓';
+                } else if (absentCheckbox.checked) {
+                    formData.attendance[student] = '△';
+                } else {
+                    formData.attendance[student] = '';
+                }
+            });
+            
+            console.log('準備提交出席數據:', formData);
+            
+            // 顯示載入狀態
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // 這裡需要替換為您的 Google Apps Script Web App URL
+            const ATTENDANCE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLKc9pT7PrZwoBkDqvrYs-5FhMFlDlG-uONqRz9si5TbhEl-27xu4zqemaHuoG30k0FQ/exec';
+            
+            // 檢查URL是否已設定
+            if (ATTENDANCE_SCRIPT_URL.includes('YOUR_ATTENDANCE_GOOGLE_APPS_SCRIPT')) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').innerHTML = '<p>❌ 請先設定 Google Apps Script Web App URL！</p>';
+                return;
+            }
+            
+            // 提交數據到 Google Sheets
+            fetch(ATTENDANCE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                console.log('收到回應:', response);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                
+                // 在 no-cors 模式下，假設提交成功
+                if (response.type === 'opaque') {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('successMessage').innerHTML = '<p>✅ 出席記錄已提交！請檢查Google Sheet確認。</p>';
+                    
+                    // 可選：清除表單
+                    document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
+                } else {
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            throw new Error('回應格式錯誤: ' + text);
+                        }
+                    });
+                }
+            })
+            .then(data => {
+                if (data && data.success) {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
+                }
+            })
+            .catch(error => {
+                console.error('提交錯誤:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('errorMessage').style.display = 'block';
+                
+                let errorMsg = '❌ 提交失敗：';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg += '無法連接到Google Apps Script，請檢查URL是否正確。';
+                } else {
+                    errorMsg += error.message;
+                }
+                
+                document.getElementById('errorMessage').innerHTML = `<p>${errorMsg}</p>`;
+            });
+        });
+        
+        // 匯出報表功能
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const year = document.getElementById('exportYear').value;
+            const month = document.getElementById('exportMonth').value;
+            
+            console.log(`準備匯出 ${year}年${month}月 出席報表`);
+            
+            // 這裡會調用後端的匯出功能
+            const exportData = {
+                action: 'export',
+                year: year,
+                month: month
+            };
+            
+            // 顯示處理中狀態
+            this.disabled = true;
+            this.textContent = '📋 處理中...';
+            
+            // 實際匯出邏輯將在Apps Script中實現
+            setTimeout(() => {
+                this.disabled = false;
+                this.textContent = '📥 匯出報表';
+                alert(`${year}年${month}月出席報表匯出功能準備中，請聯繫系統管理員設定。`);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

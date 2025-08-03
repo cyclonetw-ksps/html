@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國姓國小進修部教學日誌記錄系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e1e1e6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(40, 42, 58, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.2em;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            color: #a1a1aa;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fbbf24;
+            font-size: 1.1em;
+        }
+        
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(30, 30, 46, 0.8);
+            color: #e1e1e6;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+            background: rgba(30, 30, 46, 0.95);
+        }
+        
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .content-input-container {
+            position: relative;
+        }
+        
+        .voice-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .voice-btn:hover {
+            background: linear-gradient(135deg, #7c3aed, #9333ea);
+            transform: translateY(-2px);
+        }
+        
+        .voice-btn:active {
+            transform: translateY(0);
+        }
+        
+        .voice-btn.recording {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .quick-phrases {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .phrase-btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 20px;
+            padding: 6px 12px;
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .phrase-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+        
+        .submit-btn:disabled {
+            background: rgba(107, 114, 128, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #fbbf24;
+        }
+        
+        .success-message {
+            display: none;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #10b981;
+            text-align: center;
+        }
+        
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #ef4444;
+            text-align: center;
+        }
+        
+        .voice-hint {
+            font-size: 14px;
+            color: #a1a1aa;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .quick-phrases {
+                flex-direction: column;
+            }
+            
+            .phrase-btn {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏫 國姓國小進修部教學日誌記錄系統</h1>
+            <p>現代化教學記錄管理平台</p>
+        </div>
+        
+        <form id="teachingLogForm">
+            <div class="form-group">
+                <label class="form-label" for="date">📅 日期</label>
+                <input type="date" id="date" class="form-input" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="weekday">📆 星期</label>
+                <input type="text" id="weekday" class="form-input" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="time">⏰ 時間</label>
+                <input type="text" id="time" class="form-input" value="19:00~21:00" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="course">📚 課程</label>
+                <select id="course" class="form-select" required>
+                    <option value="">請選擇課程</option>
+                    <option value="國語與彈性">國語與彈性</option>
+                    <option value="社會生活與彈性">社會生活與彈性</option>
+                    <option value="數學與科學">數學與科學</option>
+                    <option value="國語與英文">國語與英文</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="content">📝 上課內容</label>
+                <div class="content-input-container">
+                    <textarea id="content" class="form-textarea" placeholder="請輸入上課內容..." required></textarea>
+                    <button type="button" id="voiceBtn" class="voice-btn">🎤 語音輸入</button>
+                </div>
+                <div class="voice-hint">💡 提示：可開啟語音輸入文字，方便記錄上課內容</div>
+                <div class="quick-phrases">
+                    <span class="phrase-btn" data-phrase="第一課">第一課</span>
+                    <span class="phrase-btn" data-phrase="字詞練習">字詞練習</span>
+                    <span class="phrase-btn" data-phrase="文本唸讀">文本唸讀</span>
+                    <span class="phrase-btn" data-phrase="複習">複習</span>
+                    <span class="phrase-btn" data-phrase="考試">考試</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="teacher">👨‍🏫 授課教師</label>
+                <select id="teacher" class="form-select" required>
+                    <option value="">請選擇教師</option>
+                    <option value="吳怡萱">吳怡萱</option>
+                    <option value="劉政勳">劉政勳</option>
+                    <option value="余曜男">余曜男</option>
+                    <option value="康雲昇">康雲昇</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn" class="submit-btn">
+                🚀 提交教學日誌
+            </button>
+        </form>
+        
+        <div id="loading" class="loading">
+            <p>📤 正在提交數據...</p>
+        </div>
+        
+        <div id="successMessage" class="success-message">
+            <p>✅ 教學日誌已成功提交！</p>
+        </div>
+        
+        <div id="errorMessage" class="error-message">
+            <p>❌ 提交失敗，請檢查網路連線或稍後再試。</p>
+        </div>
+    </div>
+
+    <script>
+        // 設定今天的日期
+        document.getElementById('date').valueAsDate = new Date();
+        
+        // 星期對應表
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        
+        // 日期變更時自動更新星期
+        document.getElementById('date').addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const weekday = weekdays[selectedDate.getDay()];
+            document.getElementById('weekday').value = weekday;
+        });
+        
+        // 初始化星期顯示
+        const today = new Date();
+        document.getElementById('weekday').value = weekdays[today.getDay()];
+        
+        // 語音輸入功能
+        let recognition;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'zh-TW';
+            
+            const voiceBtn = document.getElementById('voiceBtn');
+            const contentTextarea = document.getElementById('content');
+            
+            voiceBtn.addEventListener('click', function() {
+                if (voiceBtn.classList.contains('recording')) {
+                    recognition.stop();
+                    return;
+                }
+                
+                recognition.start();
+                voiceBtn.classList.add('recording');
+                voiceBtn.textContent = '🔴 錄音中...';
+            });
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                const cursorPos = contentTextarea.selectionStart;
+                const textBefore = contentTextarea.value.substring(0, cursorPos);
+                const textAfter = contentTextarea.value.substring(cursorPos);
+                
+                contentTextarea.value = textBefore + transcript + textAfter;
+                contentTextarea.focus();
+                contentTextarea.setSelectionRange(cursorPos + transcript.length, cursorPos + transcript.length);
+            };
+            
+            recognition.onend = function() {
+                voiceBtn.classList.remove('recording');
+                voiceBtn.textContent = '🎤 語音輸入';
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('語音識別錯誤:', event.error);
+                voiceBtn.classList.remove('recording');
+                voiceBtn.textContent = '🎤 語音輸入';
+            };
+        } else {
+            document.getElementById('voiceBtn').style.display = 'none';
+        }
+        
+        // 快速用語插入功能
+        document.querySelectorAll('.phrase-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const phrase = this.getAttribute('data-phrase');
+                const contentTextarea = document.getElementById('content');
+                const cursorPos = contentTextarea.selectionStart;
+                const textBefore = contentTextarea.value.substring(0, cursorPos);
+                const textAfter = contentTextarea.value.substring(cursorPos);
+                
+                contentTextarea.value = textBefore + phrase + textAfter;
+                contentTextarea.focus();
+                contentTextarea.setSelectionRange(cursorPos + phrase.length, cursorPos + phrase.length);
+            });
+        });
+        
+        // 表單提交處理
+        document.getElementById('teachingLogForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 驗證所有必填欄位
+            const requiredFields = ['date', 'course', 'content', 'teacher'];
+            let missingField = null;
+            
+            for (let fieldId of requiredFields) {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    missingField = field;
+                    break;
+                }
+            }
+            
+            if (missingField) {
+                missingField.focus();
+                missingField.style.borderColor = '#ef4444';
+                setTimeout(() => {
+                    missingField.style.borderColor = '';
+                }, 3000);
+                
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').innerHTML = '<p>❌ 請填寫所有必填欄位！</p>';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').style.display = 'none';
+                }, 3000);
+                return;
+            }
+            
+            // 收集表單數據
+            const formData = {
+                date: document.getElementById('date').value,
+                weekday: document.getElementById('weekday').value,
+                time: document.getElementById('time').value,
+                course: document.getElementById('course').value,
+                content: document.getElementById('content').value,
+                teacher: document.getElementById('teacher').value
+            };
+            
+            // 顯示載入狀態
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // 請替換為您的 Google Apps Script Web App URL
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOA2g3xTC1oP43Jh9fGFdPhsCH_LLMWLjUauyV6SE_rnfkEfv9X9rwaoMainPgc5zX/exec';
+            
+            console.log('準備提交數據:', formData);
+            console.log('目標URL:', SCRIPT_URL);
+            
+            // 檢查URL是否已設定
+            if (SCRIPT_URL.includes('YOUR_GOOGLE_APPS_SCRIPT')) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').innerHTML = '<p>❌ 請先設定 Google Apps Script Web App URL！</p>';
+                return;
+            }
+            
+            // 提交數據到 Google Sheets
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // 改為 no-cors 模式
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                console.log('收到回應:', response);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                
+                // 在 no-cors 模式下，假設提交成功
+                if (response.type === 'opaque') {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('successMessage').innerHTML = '<p>✅ 教學日誌已提交！請檢查Google Sheet確認。</p>';
+                } else {
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            throw new Error('回應格式錯誤: ' + text);
+                        }
+                    });
+                }
+            })
+            .then(data => {
+                if (data) {
+                    if (data.success) {
+                        document.getElementById('successMessage').style.display = 'block';
+                    } else {
+                        throw new Error(data.error || '提交失敗');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('提交錯誤:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('errorMessage').style.display = 'block';
+                
+                let errorMsg = '❌ 提交失敗：';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg += '無法連接到Google Apps Script，請檢查URL是否正確。';
+                } else if (error.message.includes('CORS')) {
+                    errorMsg += 'CORS錯誤，請檢查Apps Script部署設定。';
+                } else {
+                    errorMsg += error.message;
+                }
+                
+                document.getElementById('errorMessage').innerHTML = `<p>${errorMsg}</p>`;
+            });
+        });
+    </script>
+</body>
+</html>
