@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課文朗讀學習系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: '微軟正黑體', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* 初始載入畫面 */
+        #setupScreen {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .setup-header h1 {
+            color: #5a67d8;
+            margin-bottom: 10px;
+        }
+
+        .setup-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .option-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .option-card:hover {
+            border-color: #5a67d8;
+            background: #f7fafc;
+        }
+
+        .option-card.selected {
+            border-color: #5a67d8;
+            background: #ebf8ff;
+        }
+
+        .option-card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .option-card p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        /* 主要學習介面 */
+        #mainInterface {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .control-button.active {
+            background: #5a67d8;
+            color: white;
+        }
+
+        .play-button {
+            background: #48bb78;
+            color: white;
+            font-size: 18px;
+            padding: 12px 30px;
+        }
+
+        .play-button:hover {
+            background: #38a169;
+        }
+
+        .play-button.playing {
+            background: #e53e3e;
+        }
+
+        /* 文字網格 */
+        .text-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            min-height: 500px;
+        }
+
+        .text-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            padding: 5px;
+        }
+
+        .text-cell:hover {
+            background: #fef5e7;
+            border-color: #f39c12;
+            transform: scale(1.05);
+        }
+
+        .text-cell.playing {
+            background: #d5f4e6;
+            border-color: #27ae60;
+            animation: pulse 0.5s;
+        }
+
+        .text-cell.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .text-cell.empty:hover {
+            background: transparent;
+            border: none;
+            transform: none;
+        }
+
+        .text-cell.newline {
+            grid-column: span 10;
+            height: 20px;
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .main-char {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .zhuyin {
+            font-size: 14px;
+            color: #e74c3c;
+            margin-top: 5px;
+            font-family: '標楷體', 'DFKai-sb', serif;
+        }
+
+        /* 分頁控制 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .page-button {
+            padding: 8px 16px;
+            background: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .page-button:hover:not(:disabled) {
+            background: #4c51bf;
+        }
+
+        .page-button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        /* 手動輸入區 */
+        .manual-input {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .manual-input textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .manual-input button {
+            margin-top: 10px;
+            padding: 10px 30px;
+            background: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 檔案選擇器 */
+        .file-selector {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .file-input-wrapper {
+            margin: 10px 0;
+        }
+
+        .file-input-wrapper label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .load-button {
+            margin-top: 10px;
+            padding: 10px 30px;
+            background: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 音檔載入區 */
+        .sound-loader {
+            margin-top: 10px;
+            padding: 15px;
+            background: #fef5e7;
+            border-radius: 8px;
+            border: 2px dashed #f39c12;
+        }
+
+        .sound-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e6fffa;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #047857;
+        }
+
+        /* 提示訊息 */
+        .info-message {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .warning-message {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        /* 返回按鈕 */
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #5a67d8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #5a67d8;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background: #5a67d8;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 返回按鈕 -->
+    <button class="back-button" onclick="backToSetup()" style="display: none;">← 返回</button>
+
+    <!-- 設定畫面 -->
+    <div id="setupScreen">
+        <div class="setup-header">
+            <h1>📚 課文朗讀學習系統</h1>
+            <p>請選擇資料載入方式</p>
+        </div>
+
+        <div class="setup-options">
+            <div class="option-card" onclick="selectMode('local')">
+                <h3>💻 本機檔案模式</h3>
+                <p>選擇本機的課文檔案和音檔<br>適用於本機測試</p>
+            </div>
+            <div class="option-card" onclick="selectMode('manual')">
+                <h3>✏️ 手動輸入模式</h3>
+                <p>直接輸入課文內容<br>適用於快速測試</p>
+            </div>
+        </div>
+
+        <!-- 本機檔案選擇 -->
+        <div class="file-selector" id="fileSelector">
+            <div class="file-input-wrapper">
+                <label>📄 選擇課文檔案 (.txt)：</label>
+                <input type="file" id="textFileInput" accept=".txt" multiple>
+            </div>
+            
+            <div class="sound-loader">
+                <label><strong>🔊 音檔資料夾設定：</strong></label>
+                <p style="margin: 10px 0; color: #666;">
+                    請確保你的音檔在與HTML相同目錄下的 <code>sounddata/</code> 資料夾中<br>
+                    <span style="color: #e74c3c;">重要：輕聲音檔命名必須包含 ˙ 符號，例如：ㄉㄜ˙.mp3</span>
+                </p>
+                <input type="text" id="soundPath" value="sounddata/" style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px;">
+                <div class="sound-status" id="soundStatus">等待載入課文...</div>
+            </div>
+            
+            <button class="load-button" onclick="loadLocalFiles()">載入檔案</button>
+        </div>
+
+        <!-- 手動輸入 -->
+        <div class="manual-input" id="manualInput">
+            <label><strong>輸入課文內容：</strong></label>
+            <textarea id="textInput" placeholder="請輸入課文，格式：字(注音)
+例如：
+一(ㄧ)、春(ㄔㄨㄣ)雨(ㄩˇ)
+雨(ㄩˇ)聲(ㄕㄥ)滴(ㄉㄧ)答(ㄉㄚˊ)，
+
+二(ㄦˋ)、春(ㄔㄨㄣ)風(ㄈㄥ)
+風(ㄈㄥ)兒(ㄦˊ)輕(ㄑㄧㄥ)輕(ㄑㄧㄥ)"></textarea>
+            <button onclick="loadManualText()">載入課文</button>
+        </div>
+    </div>
+
+    <!-- 主要學習介面 -->
+    <div id="mainInterface">
+        <div class="control-panel">
+            <div class="control-group">
+                <span style="color: white; font-weight: bold;">顯示模式：</span>
+                <button class="control-button" onclick="setDisplayMode('char')">國字</button>
+                <button class="control-button active" onclick="setDisplayMode('both')">國字+注音</button>
+                <button class="control-button" onclick="setDisplayMode('zhuyin')">純注音</button>
+            </div>
+            <div class="control-group">
+                <button class="control-button play-button" id="playAllBtn" onclick="playAll()">
+                    🔊 全文念讀
+                </button>
+                <button class="control-button" style="background: #ff6b6b; color: white;" onclick="stopPlaying()" id="stopBtn" style="display: none;">
+                    ⏹ 停止
+                </button>
+            </div>
+            <div class="control-group">
+                <span style="color: white; font-weight: bold;">字型：</span>
+                <select id="fontSelector" class="control-button" onchange="changeFont()">
+                    <option value="'標楷體', 'DFKai-sb', serif">標楷體</option>
+                    <option value="'微軟正黑體', 'Microsoft JhengHei', sans-serif">微軟正黑體</option>
+                    <option value="'新細明體', 'PMingLiU', serif">新細明體</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="text-grid" id="textGrid"></div>
+
+        <div class="pagination">
+            <button class="page-button" onclick="previousPage()">上一頁</button>
+            <span class="page-info" id="pageInfo">第 1 頁 / 共 1 頁</span>
+            <button class="page-button" onclick="nextPage()">下一頁</button>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let currentMode = '';
+        let currentData = [];
+        let currentPage = 0;
+        let totalPages = 1;
+        let displayMode = 'both';
+        let isPlaying = false;
+        let soundBasePath = 'sounddata/';
+        let playingAudio = null;
+        let currentFont = "'標楷體', 'DFKai-sb', serif";
+        let playQueue = [];  // 播放佇列，防止重疊
+
+        // 選擇模式
+        function selectMode(mode) {
+            currentMode = mode;
+            
+            // 隱藏所有選項
+            document.getElementById('fileSelector').style.display = 'none';
+            document.getElementById('manualInput').style.display = 'none';
+            
+            // 重設選擇狀態
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // 設定選中的卡片
+            event.currentTarget.classList.add('selected');
+            
+            switch(mode) {
+                case 'local':
+                    document.getElementById('fileSelector').style.display = 'block';
+                    break;
+                case 'manual':
+                    document.getElementById('manualInput').style.display = 'block';
+                    break;
+            }
+        }
+
+        // 載入本機檔案
+        function loadLocalFiles() {
+            const fileInput = document.getElementById('textFileInput');
+            if (fileInput.files.length === 0) {
+                alert('請選擇至少一個檔案');
+                return;
+            }
+            
+            // 更新音檔路徑
+            soundBasePath = document.getElementById('soundPath').value;
+            if (!soundBasePath.endsWith('/')) {
+                soundBasePath += '/';
+            }
+            
+            // 讀取第一個檔案作為範例
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                currentData = parseText(content);
+                
+                // 測試音檔
+                testSoundFiles();
+                
+                // 切換到主介面
+                document.getElementById('setupScreen').style.display = 'none';
+                document.getElementById('mainInterface').style.display = 'block';
+                document.querySelector('.back-button').style.display = 'block';
+                
+                renderPage();
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // 載入手動輸入的課文
+        function loadManualText() {
+            const textInput = document.getElementById('textInput').value;
+            if (!textInput.trim()) {
+                alert('請輸入課文內容');
+                return;
+            }
+            
+            currentData = parseText(textInput);
+            
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('mainInterface').style.display = 'block';
+            document.querySelector('.back-button').style.display = 'block';
+            
+            renderPage();
+        }
+
+        // 解析課文（保留換行）
+        function parseText(text) {
+            const result = [];
+            const lines = text.split('\n');
+            
+            lines.forEach((line, lineIndex) => {
+                if (line.trim() === '') {
+                    // 空行，添加換行標記
+                    result.push({
+                        char: '\n',
+                        zhuyin: '',
+                        isNewline: true
+                    });
+                } else {
+                    // 解析這一行的文字
+                    const charPattern = /(.)\(([^)]+)\)/g;
+                    let lastIndex = 0;
+                    let match;
+                    
+                    while ((match = charPattern.exec(line)) !== null) {
+                        // 處理匹配前的標點符號
+                        const beforeText = line.substring(lastIndex, match.index);
+                        for (let char of beforeText) {
+                            if (char && char !== ' ') {
+                                result.push({
+                                    char: char,
+                                    zhuyin: char,
+                                    isPunctuation: true
+                                });
+                            }
+                        }
+                        
+                        // 添加匹配的字和注音
+                        result.push({
+                            char: match[1],
+                            zhuyin: match[2]
+                        });
+                        
+                        lastIndex = charPattern.lastIndex;
+                    }
+                    
+                    // 處理行尾剩餘的標點符號
+                    const remainingText = line.substring(lastIndex);
+                    for (let char of remainingText) {
+                        if (char && char !== ' ') {
+                            result.push({
+                                char: char,
+                                zhuyin: char,
+                                isPunctuation: true
+                            });
+                        }
+                    }
+                    
+                    // 如果不是最後一行，添加換行
+                    if (lineIndex < lines.length - 1) {
+                        result.push({
+                            char: '\n',
+                            zhuyin: '',
+                            isNewline: true
+                        });
+                    }
+                }
+            });
+            
+            return result;
+        }
+
+        // 測試音檔是否存在
+        function testSoundFiles() {
+            // 測試包含輕聲的音檔
+            const testSounds = ['ㄧ', 'ㄨㄛˇ', 'ㄉㄜ˙', 'ㄇㄚ˙', 'ㄗ˙'];
+            let foundCount = 0;
+            let testedCount = 0;
+            
+            testSounds.forEach(sound => {
+                const audio = new Audio(soundBasePath + sound + '.mp3');
+                
+                audio.addEventListener('canplaythrough', () => {
+                    foundCount++;
+                    testedCount++;
+                    updateSoundStatus(foundCount, testedCount, testSounds.length);
+                });
+                
+                audio.addEventListener('error', () => {
+                    console.warn(`找不到音檔: ${sound}.mp3`);
+                    testedCount++;
+                    updateSoundStatus(foundCount, testedCount, testSounds.length);
+                });
+                
+                // 觸發載入
+                audio.load();
+            });
+        }
+
+        // 更新音檔狀態
+        function updateSoundStatus(found, tested, total) {
+            const status = document.getElementById('soundStatus');
+            if (status) {
+                if (tested < total) {
+                    status.textContent = `測試中... ${tested}/${total}`;
+                } else {
+                    status.textContent = `音檔測試完成: ${found}/${total} 個音檔可用`;
+                    if (found === 0) {
+                        status.style.color = '#b91c1c';
+                        status.style.background = '#fee2e2';
+                        status.textContent += ' (請檢查 sounddata 資料夾)';
+                    } else if (found < total) {
+                        status.style.color = '#92400e';
+                        status.style.background = '#fef3c7';
+                    } else {
+                        status.style.color = '#047857';
+                        status.style.background = '#d1fae5';
+                    }
+                }
+            }
+        }
+
+        // 渲染頁面（處理換行）
+        function renderPage() {
+            const grid = document.getElementById('textGrid');
+            grid.innerHTML = '';
+            
+            const itemsPerPage = 70;
+            let displayData = [];
+            let cellCount = 0;
+            let pageData = [];
+            
+            // 處理分頁（考慮換行）
+            for (let i = 0; i < currentData.length; i++) {
+                if (currentData[i].isNewline) {
+                    // 換行：填滿當前行
+                    const remainder = cellCount % 10;
+                    if (remainder !== 0) {
+                        const fillCount = 10 - remainder;
+                        for (let j = 0; j < fillCount; j++) {
+                            pageData.push({ isEmpty: true });
+                            cellCount++;
+                        }
+                    }
+                } else {
+                    pageData.push(currentData[i]);
+                    cellCount++;
+                }
+                
+                // 檢查是否需要換頁
+                if (cellCount >= itemsPerPage && i < currentData.length - 1) {
+                    displayData.push(pageData);
+                    pageData = [];
+                    cellCount = 0;
+                }
+            }
+            
+            // 添加最後一頁
+            if (pageData.length > 0) {
+                displayData.push(pageData);
+            }
+            
+            totalPages = displayData.length || 1;
+            
+            // 顯示當前頁
+            if (currentPage >= totalPages) {
+                currentPage = 0;
+            }
+            
+            const currentPageData = displayData[currentPage] || [];
+            
+            currentPageData.forEach((item, index) => {
+                const cell = document.createElement('div');
+                
+                if (item.isEmpty) {
+                    cell.className = 'text-cell empty';
+                } else {
+                    cell.className = 'text-cell';
+                    cell.onclick = async () => {
+                        if (!isPlaying) {
+                            await playSound(item.zhuyin, cell);
+                        }
+                    };
+                    
+                    if (displayMode === 'char' || displayMode === 'both') {
+                        const charDiv = document.createElement('div');
+                        charDiv.className = 'main-char';
+                        charDiv.textContent = item.char;
+                        charDiv.style.fontFamily = currentFont;
+                        cell.appendChild(charDiv);
+                    }
+                    
+                    if (displayMode === 'zhuyin' || displayMode === 'both') {
+                        const zhuyinDiv = document.createElement('div');
+                        zhuyinDiv.className = 'zhuyin';
+                        zhuyinDiv.textContent = item.zhuyin;
+                        cell.appendChild(zhuyinDiv);
+                    }
+                }
+                
+                grid.appendChild(cell);
+            });
+            
+            // 補齊剩餘空格到70個
+            const remainingCells = itemsPerPage - currentPageData.length;
+            for (let i = 0; i < remainingCells; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'text-cell empty';
+                grid.appendChild(emptyCell);
+            }
+            
+            updatePageInfo();
+        }
+
+        // 更新頁面資訊
+        function updatePageInfo() {
+            document.getElementById('pageInfo').textContent = 
+                `第 ${currentPage + 1} 頁 / 共 ${totalPages} 頁`;
+            
+            document.querySelector('.pagination button:first-child').disabled = currentPage === 0;
+            document.querySelector('.pagination button:last-child').disabled = currentPage === totalPages - 1;
+        }
+
+        // 設定顯示模式
+        function setDisplayMode(mode) {
+            displayMode = mode;
+            
+            document.querySelectorAll('.control-group:first-child .control-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (mode === 'char') {
+                event.target.classList.add('active');
+            } else if (mode === 'both') {
+                document.querySelectorAll('.control-group:first-child .control-button')[1].classList.add('active');
+            } else {
+                document.querySelectorAll('.control-group:first-child .control-button')[2].classList.add('active');
+            }
+            
+            renderPage();
+        }
+
+        // 播放聲音（返回 Promise）
+        function playSound(zhuyin, element) {
+            return new Promise((resolve) => {
+                if (!zhuyin || zhuyin === '\n') {
+                    resolve();
+                    return;
+                }
+                
+                // 停止之前的音檔
+                if (playingAudio) {
+                    playingAudio.pause();
+                    playingAudio = null;
+                }
+                
+                // 移除所有播放中的樣式
+                document.querySelectorAll('.text-cell.playing').forEach(cell => {
+                    cell.classList.remove('playing');
+                });
+                
+                // 添加播放樣式
+                if (element) {
+                    element.classList.add('playing');
+                }
+                
+                // 建立音檔路徑
+                const soundFile = soundBasePath + zhuyin + '.mp3';
+                console.log('嘗試播放:', soundFile);
+                
+                const audio = new Audio(soundFile);
+                playingAudio = audio;
+                
+                // 設定結束事件
+                audio.onended = () => {
+                    if (element) {
+                        element.classList.remove('playing');
+                    }
+                    playingAudio = null;
+                    resolve();
+                };
+                
+                // 設定錯誤處理
+                audio.onerror = () => {
+                    console.error(`無法播放音檔: ${soundFile}`);
+                    if (element) {
+                        element.classList.remove('playing');
+                    }
+                    playingAudio = null;
+                    
+                    // 對於輕聲符號，不使用語音合成
+                    if (zhuyin.includes('˙')) {
+                        console.log('輕聲符號，跳過語音合成');
+                        resolve();
+                        return;
+                    }
+                    
+                    // 使用語音合成作為備用方案
+                    try {
+                        const utterance = new SpeechSynthesisUtterance(zhuyin);
+                        utterance.lang = 'zh-TW';
+                        utterance.rate = 0.8;
+                        
+                        utterance.onend = () => {
+                            if (element) {
+                                element.classList.remove('playing');
+                            }
+                            resolve();
+                        };
+                        
+                        speechSynthesis.speak(utterance);
+                    } catch (e) {
+                        console.error('語音合成也失敗:', e);
+                        resolve();
+                    }
+                };
+                
+                // 嘗試播放
+                audio.play().catch(error => {
+                    console.error('播放錯誤:', error);
+                    if (element) {
+                        element.classList.remove('playing');
+                    }
+                    resolve();
+                });
+            });
+        }
+
+        // 全文念讀
+        async function playAll() {
+            if (isPlaying) {
+                stopPlaying();
+                return;
+            }
+            
+            isPlaying = true;
+            document.getElementById('playAllBtn').textContent = '⏸ 暫停';
+            document.getElementById('playAllBtn').classList.add('playing');
+            
+            // 計算當前頁面的資料範圍
+            const itemsPerPage = 70;
+            const startIndex = currentPage * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, currentData.length);
+            
+            // 取得當前頁面的實際資料（不包含換行和空格）
+            const pageData = [];
+            const cells = document.querySelectorAll('.text-cell:not(.empty)');
+            let cellIndex = 0;
+            
+            for (let i = startIndex; i < endIndex && i < currentData.length; i++) {
+                if (!currentData[i].isNewline && !currentData[i].isEmpty) {
+                    pageData.push({
+                        data: currentData[i],
+                        cell: cells[cellIndex]
+                    });
+                    cellIndex++;
+                }
+            }
+            
+            // 依序播放每個字
+            for (let i = 0; i < pageData.length; i++) {
+                if (!isPlaying) break;
+                
+                const { data, cell } = pageData[i];
+                
+                if (!data || !data.zhuyin || data.zhuyin === '\n') continue;
+                
+                // 等待音檔播放完成
+                await playSound(data.zhuyin, cell);
+                
+                // 根據標點符號添加額外停頓
+                if (!isPlaying) break;
+                
+                let extraDelay = 0;
+                if (data.char === '。' || data.char === '！' || data.char === '？') {
+                    extraDelay = 600; // 句號額外停頓
+                } else if (data.char === '，' || data.char === '、' || data.char === '；') {
+                    extraDelay = 300; // 逗號額外停頓
+                } else {
+                    extraDelay = 100; // 一般字之間的短停頓
+                }
+                
+                // 等待額外停頓時間
+                if (extraDelay > 0) {
+                    await new Promise(resolve => setTimeout(resolve, extraDelay));
+                }
+            }
+            
+            stopPlaying();
+        }
+
+        // 停止播放
+        function stopPlaying() {
+            isPlaying = false;
+            
+            if (playingAudio) {
+                playingAudio.pause();
+                playingAudio = null;
+            }
+            
+            // 停止語音合成
+            speechSynthesis.cancel();
+            
+            // 重設按鈕
+            document.getElementById('playAllBtn').textContent = '🔊 全文念讀';
+            document.getElementById('playAllBtn').classList.remove('playing');
+            
+            // 移除所有播放樣式
+            document.querySelectorAll('.text-cell.playing').forEach(cell => {
+                cell.classList.remove('playing');
+            });
+        }
+
+        // 上一頁
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                stopPlaying();
+                renderPage();
+            }
+        }
+
+        // 下一頁
+        function nextPage() {
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                stopPlaying();
+                renderPage();
+            }
+        }
+
+        // 更換字型
+        function changeFont() {
+            currentFont = document.getElementById('fontSelector').value;
+            document.querySelectorAll('.main-char').forEach(elem => {
+                elem.style.fontFamily = currentFont;
+            });
+        }
+
+        // 返回設定畫面
+        function backToSetup() {
+            stopPlaying();
+            
+            document.getElementById('setupScreen').style.display = 'block';
+            document.getElementById('mainInterface').style.display = 'none';
+            document.querySelector('.back-button').style.display = 'none';
+            
+            // 重設狀態
+            currentData = [];
+            currentPage = 0;
+            isPlaying = false;
+        }
+
+        // 鍵盤快捷鍵
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('mainInterface').style.display === 'block') {
+                if (e.key === 'ArrowLeft') {
+                    previousPage();
+                } else if (e.key === 'ArrowRight') {
+                    nextPage();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    playAll();
+                } else if (e.key === 'Escape') {
+                    stopPlaying();
+                }
+            }
+        });
+
+        // 頁面載入時的提示
+        window.addEventListener('load', () => {
+            console.log('=== 課文朗讀系統已載入 ===');
+            console.log('音檔路徑:', soundBasePath);
+            console.log('音檔命名規則:');
+            console.log('  一般注音: ㄅ.mp3, ㄆ.mp3, ㄇ.mp3...');
+            console.log('  聲調變化: ㄅㄚ.mp3, ㄅㄚˊ.mp3, ㄅㄚˇ.mp3, ㄅㄚˋ.mp3');
+            console.log('  輕聲符號: ㄉㄜ˙.mp3, ㄇㄚ˙.mp3, ㄗ˙.mp3');
+            console.log('  標點符號: 、.mp3, 。.mp3');
+            console.log('');
+            console.log('快捷鍵:');
+            console.log('  空白鍵: 播放/暫停');
+            console.log('  ← →: 上/下一頁');
+            console.log('  Esc: 停止播放');
+            console.log('===========================');
+        });
+    </script>
+</body>
+</html>

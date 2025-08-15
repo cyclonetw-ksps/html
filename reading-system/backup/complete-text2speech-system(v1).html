@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課文生字念讀輔助系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自訂字型載入 */
+        @font-face {
+            font-family: '教育部標楷體';
+            src: url('./fonts/教育部標楷體.ttf') format('truetype');
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '全字庫正楷體';
+            src: url('./fonts/全字庫正楷體.ttf') format('truetype');
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '思源黑體';
+            src: url('./fonts/思源黑體.ttf') format('truetype');
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '王漢宗細黑體';
+            src: url('./fonts/王漢宗細黑體.ttf') format('truetype');
+            font-display: swap;
+        }
+        
+        /* 動態字型類別 */
+        .font-edu-kai { font-family: '教育部標楷體', serif; }
+        .font-cns-kai { font-family: '全字庫正楷體', serif; }
+        .font-noto-sans { font-family: '思源黑體', sans-serif; }
+        .font-wang-hei { font-family: '王漢宗細黑體', sans-serif; }
+        
+        /* 播放效果動畫 */
+        .playing-effect {
+            animation: playingPulse 0.8s ease-in-out infinite alternate;
+        }
+        
+        @keyframes playingPulse {
+            0% {
+                background: linear-gradient(135deg, #fbbf24, #f59e0b);
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+                transform: scale(1.15);
+            }
+            100% {
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                box-shadow: 0 0 30px rgba(217, 119, 6, 0.8);
+                transform: scale(1.2);
+            }
+        }
+        
+        /* 點讀效果 */
+        .click-reading {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+            color: white !important;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
+            transform: scale(1.1);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 字型選項
+        const fontOptions = [
+            { name: '預設字型', value: 'default', className: '' },
+            { name: '教育部標楷體', value: 'edu-kai', className: 'font-edu-kai' },
+            { name: '全字庫正楷體', value: 'cns-kai', className: 'font-cns-kai' },
+            { name: '思源黑體', value: 'noto-sans', className: 'font-noto-sans' },
+            { name: '王漢宗細黑體', value: 'wang-hei', className: 'font-wang-hei' },
+            { name: '標楷體', value: 'kai', className: '' },
+            { name: '新細明體', value: 'ming', className: '' }
+        ];
+
+        // 解析TXT內容 - 增強版本
+        const parseTxtContent = (content) => {
+            console.log('開始解析TXT內容:', content.substring(0, 200)); // 除錯用
+            
+            // 移除分隔線
+            const cleanContent = content.replace(/={50,}/g, '').trim();
+            const lines = cleanContent.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                console.warn('沒有找到有效的文字內容');
+                return { title: '空白課文', characters: [] };
+            }
+            
+            // 提取標題
+            const titleLine = lines[0] || '';
+            let title = titleLine;
+            if (titleLine.includes('、')) {
+                title = titleLine.split('、')[1] || titleLine;
+            }
+            title = title.replace(/[()（）]/g, '').trim(); // 移除括號
+            
+            console.log('課文標題:', title);
+            
+            const characters = [];
+            
+            // 處理每一行內容
+            lines.forEach((line, lineIndex) => {
+                if (lineIndex === 0) return; // 跳過標題行
+                
+                const trimmedLine = line.trim();
+                if (!trimmedLine) return;
+                
+                console.log(`處理第${lineIndex}行:`, trimmedLine);
+                
+                // 改進的正則表達式來匹配 字(注音) 格式
+                const regex = /([^()\s，。！？、：；]+)(\([^)]+\))?/g;
+                let match;
+                
+                while ((match = regex.exec(trimmedLine)) !== null) {
+                    const charText = match[1]; // 字符部分
+                    const pinyinPart = match[2]; // 注音部分（包含括號）
+                    const pinyin = pinyinPart ? pinyinPart.slice(1, -1) : ''; // 移除括號
+                    
+                    // 處理每個字符
+                    for (let i = 0; i < charText.length; i++) {
+                        const char = charText[i];
+                        if (char && char.trim()) {
+                            const isPunctuation = /[，。！？、：；\s]/.test(char);
+                            
+                            characters.push({
+                                char: char,
+                                pinyin: pinyin,
+                                isPunctuation: isPunctuation
+                            });
+                            
+                            console.log(`添加字符: "${char}" 注音: "${pinyin}" 標點: ${isPunctuation}`);
+                        }
+                    }
+                }
+            });
+            
+            console.log(`解析完成，共${characters.length}個字符:`, characters.slice(0, 10));
+            
+            return { title, characters };
+        };
+
+        // 模擬資料 - 實際使用時會從檔案系統讀取
+        const mockData = {
+            '1上康軒': [
+                { name: '第一課：做早操', filename: '第一課.txt' },
+                { name: '第二課：吹泡泡', filename: '第二課.txt' },
+                { name: '第三課：秋千', filename: '第三課.txt' },
+                { name: '第四課：跳房子', filename: '第四課.txt' },
+                { name: '第五課：門開了', filename: '第五課.txt' }
+            ],
+            '1下康軒': [
+                { name: '第一課：春天', filename: '第一課.txt' },
+                { name: '第二課：花朵', filename: '第二課.txt' }
+            ],
+            '2上康軒': [
+                { name: '第一課：我的家', filename: '第一課.txt' },
+                { name: '第二課：學校生活', filename: '第二課.txt' }
+            ]
+        };
+
+        const mockLessonContent = `一(ㄧ)、做(ㄗㄨㄛˋ)早(ㄗㄠˇ)操(ㄘㄠ)。
+一(ㄧ)二(ㄦˋ)三(ㄙㄢ)四(ㄙˋ)，
+二(ㄦˋ)二(ㄦˋ)三(ㄙㄢ)四(ㄙˋ)，
+來(ㄌㄞˊ)來(ㄌㄞˊ)來(ㄌㄞˊ)。
+三(ㄙㄢ)二(ㄦˋ)三(ㄙㄢ)四(ㄙˋ)，
+四(ㄙˋ)二(ㄦˋ)三(ㄙㄢ)四(ㄙˋ)，
+快(ㄎㄨㄞˋ)快(ㄎㄨㄞˋ)來(ㄌㄞˊ)。
+早(ㄗㄠˇ)安(ㄢ)！
+你(ㄋㄧˇ)好(ㄏㄠˇ)！
+大(ㄉㄚˋ)家(ㄐㄧㄚ)一(ㄧˋ)起(ㄑㄧˇ)做(ㄗㄨㄛˋ)早(ㄗㄠˇ)操(ㄘㄠ)。
+運(ㄩㄣˋ)動(ㄉㄨㄥˋ)身(ㄕㄣ)體(ㄊㄧˇ)好(ㄏㄠˇ)，
+健(ㄐㄧㄢˋ)康(ㄎㄤ)快(ㄎㄨㄞˋ)樂(ㄌㄜˋ)一(ㄧˋ)起(ㄑㄧˇ)跳(ㄊㄧㄠˋ)。`;
+
+        const Text2SpeechApp = () => {
+            const [currentView, setCurrentView] = useState('directory');
+            const [selectedGrade, setSelectedGrade] = useState('');
+            const [currentLesson, setCurrentLesson] = useState(null);
+            const [lessonData, setLessonData] = useState(null);
+            const [displayMode, setDisplayMode] = useState('both');
+            const [selectedFont, setSelectedFont] = useState('default');
+            const [currentPage, setCurrentPage] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1);
+            const [clickReadingIndex, setClickReadingIndex] = useState(-1);
+            
+            const audioRef = useRef(null);
+            const CHARS_PER_PAGE = 70;
+
+            // 播放音檔
+            const playAudio = async (pinyin) => {
+                if (!pinyin) return;
+                
+                try {
+                    const audioPath = `./sounddata/${pinyin}.mp3`;
+                    
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
+                    
+                    const audio = new Audio(audioPath);
+                    audioRef.current = audio;
+                    
+                    audio.onloadeddata = () => {
+                        audio.play().catch(error => {
+                            console.warn(`無法播放: ${audioPath}`, error);
+                        });
+                    };
+                    
+                    audio.onerror = () => {
+                        console.warn(`音檔不存在: ${audioPath}`);
+                    };
+                    
+                } catch (error) {
+                    console.error('播放錯誤:', error);
+                }
+            };
+
+            // 單字點讀
+            const playCharacter = (char, pinyin, index) => {
+                setClickReadingIndex(index);
+                playAudio(pinyin);
+                
+                setTimeout(() => {
+                    setClickReadingIndex(-1);
+                }, 600);
+            };
+
+            // 全文朗讀
+            const playFullText = () => {
+                if (!lessonData) return;
+                
+                setIsPlaying(!isPlaying);
+                if (!isPlaying) {
+                    let index = 0;
+                    const playNext = () => {
+                        if (index < lessonData.characters.length && isPlaying) {
+                            setCurrentPlayingIndex(index);
+                            const char = lessonData.characters[index];
+                            
+                            if (char.pinyin) {
+                                playAudio(char.pinyin);
+                            }
+                            
+                            const delay = char.isPunctuation ? 1000 : 700;
+                            
+                            setTimeout(() => {
+                                setCurrentPlayingIndex(-1);
+                                index++;
+                                if (index < lessonData.characters.length) {
+                                    setTimeout(playNext, 300);
+                                } else {
+                                    setIsPlaying(false);
+                                }
+                            }, delay);
+                        }
+                    };
+                    playNext();
+                } else {
+                    setCurrentPlayingIndex(-1);
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
+                }
+            };
+
+            // 選擇課程
+            const selectLesson = (grade, lesson) => {
+                setSelectedGrade(grade);
+                setCurrentLesson(lesson);
+                const parsed = parseTxtContent(mockLessonContent);
+                setLessonData(parsed);
+                setCurrentView('lesson');
+                setCurrentPage(0);
+            };
+
+            // 直接上傳檔案
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (file && file.type === 'text/plain') {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        const parsed = parseTxtContent(content);
+                        setLessonData(parsed);
+                        setCurrentLesson({ name: file.name.replace('.txt', ''), filename: file.name });
+                        setCurrentView('lesson');
+                        setCurrentPage(0);
+                    };
+                    reader.readAsText(file, 'UTF-8');
+                }
+            };
+
+            const getCurrentPageCharacters = () => {
+                if (!lessonData) return [];
+                const start = currentPage * CHARS_PER_PAGE;
+                const end = start + CHARS_PER_PAGE;
+                return lessonData.characters.slice(start, end);
+            };
+
+            const getTotalPages = () => {
+                if (!lessonData) return 0;
+                return Math.ceil(lessonData.characters.length / CHARS_PER_PAGE);
+            };
+
+            const renderCharacterGrid = () => {
+                const characters = getCurrentPageCharacters();
+                const fontClass = fontOptions.find(f => f.value === selectedFont)?.className || '';
+                
+                // 確保顯示完整的 10x7 = 70 個格子
+                const grid = [];
+                for (let row = 0; row < 7; row++) {
+                    for (let col = 0; col < 10; col++) {
+                        const index = row * 10 + col;
+                        const char = characters[index];
+                        const globalIndex = currentPage * CHARS_PER_PAGE + index;
+                        const isCurrentlyPlaying = currentPlayingIndex === globalIndex;
+                        const isClickReading = clickReadingIndex === globalIndex;
+                        
+                        grid.push(
+                            <div
+                                key={index}
+                                className={`
+                                    aspect-square border-2 border-gray-400 flex flex-col items-center justify-center
+                                    cursor-pointer transition-all duration-300 min-h-[60px] sm:min-h-[80px] lg:min-h-[100px]
+                                    ${char ? 'hover:bg-blue-100 hover:border-blue-400 active:bg-blue-200' : 'bg-gray-100'}
+                                    ${char?.isPunctuation ? 'bg-green-100 border-green-300' : ''}
+                                    ${isCurrentlyPlaying ? 'playing-effect z-10 border-yellow-500' : ''}
+                                    ${isClickReading ? 'click-reading z-10 border-blue-600' : ''}
+                                `}
+                                onClick={() => char && playCharacter(char.char, char.pinyin, globalIndex)}
+                            >
+                                {char && (
+                                    <div className="flex flex-col items-center justify-center h-full">
+                                        {/* 國字顯示 */}
+                                        {(displayMode === 'chinese' || displayMode === 'both') && (
+                                            <div className={`font-bold text-xl sm:text-2xl lg:text-3xl ${fontClass}`}>
+                                                {char.char}
+                                            </div>
+                                        )}
+                                        
+                                        {/* 注音顯示 */}
+                                        {(displayMode === 'pinyin' || displayMode === 'both') && char.pinyin && (
+                                            <div className="text-sm sm:text-base text-red-600 mt-1">
+                                                {char.pinyin}
+                                            </div>
+                                        )}
+                                        
+                                        {/* 純注音模式且沒有國字時，確保有內容 */}
+                                        {displayMode === 'pinyin' && !char.pinyin && (
+                                            <div className={`font-bold text-xl sm:text-2xl lg:text-3xl ${fontClass} text-gray-600`}>
+                                                {char.char}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                }
+                
+                return grid;
+            };
+
+            // 目錄視圖
+            if (currentView === 'directory') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+                        <div className="max-w-6xl mx-auto">
+                            <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+                                課文生字念讀輔助系統
+                            </h1>
+                            
+                            {/* 快速選擇區域 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                <h2 className="text-2xl font-semibold mb-6 text-center text-blue-700">
+                                    🚀 快速開始學習
+                                </h2>
+                                
+                                {/* 年級版本快速選擇 */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {Object.entries(mockData).map(([grade, lessons]) => (
+                                        <div key={grade} className="border rounded-lg p-4 bg-gray-50">
+                                            <h3 className="text-lg font-semibold mb-3 text-center text-gray-700">
+                                                {grade}
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {lessons.map((lesson, index) => (
+                                                    <button
+                                                        key={index}
+                                                        onClick={() => selectLesson(grade, lesson)}
+                                                        className="w-full p-3 text-left rounded-md border border-gray-300 
+                                                                 hover:border-blue-400 hover:bg-blue-50 transition-all
+                                                                 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                    >
+                                                        <div className="font-medium text-gray-800">{lesson.name}</div>
+                                                        <div className="text-sm text-gray-600">{lesson.filename}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 檔案上傳區域 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-xl font-semibold mb-4 flex items-center justify-center">
+                                    📁 或上傳自己的課文檔案
+                                </h2>
+                                <div className="max-w-md mx-auto">
+                                    <input
+                                        type="file"
+                                        accept=".txt"
+                                        onChange={handleFileUpload}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 
+                                                 file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                                 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                    <p className="text-sm text-gray-600 mt-3 text-center">
+                                        支援格式：字(注音) - 如：做(ㄗㄨㄛˋ)早(ㄗㄠˇ)操(ㄘㄠ)
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* 系統說明 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+                                <h3 className="text-xl font-semibold mb-4 text-center">📋 資料夾結構說明</h3>
+                                <div className="bg-gray-100 p-4 rounded-lg font-mono text-sm">
+                                    <pre>{`根目錄/
+├── DATA/
+│   ├── 1上康軒/
+│   │   ├── 第一課.txt
+│   │   ├── 第二課.txt
+│   │   └── ...
+│   ├── 1下康軒/
+│   └── ...
+├── sounddata/
+│   ├── ㄧ.mp3
+│   ├── ㄧˊ.mp3
+│   ├── ㄧˋ.mp3
+│   ├── 、.mp3
+│   └── ...
+└── fonts/
+    ├── 教育部標楷體.ttf
+    ├── 全字庫正楷體.ttf
+    └── ...`}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 課程學習視圖
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-2 sm:p-4">
+                    <div className="max-w-6xl mx-auto">
+                        {/* 標題控制列 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => {
+                                            setIsPlaying(false);
+                                            setCurrentPlayingIndex(-1);
+                                            setCurrentView('directory');
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg 
+                                                 hover:bg-gray-200 transition-all"
+                                    >
+                                        🏠 返回選擇
+                                    </button>
+                                    <h1 className="text-lg sm:text-xl font-bold text-gray-800">
+                                        {lessonData?.title || currentLesson?.name || '課文學習'}
+                                    </h1>
+                                </div>
+                                
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {/* 顯示模式 */}
+                                    <div className="flex gap-1">
+                                        {['chinese', 'both', 'pinyin'].map(mode => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setDisplayMode(mode)}
+                                                className={`px-3 py-2 rounded text-sm ${
+                                                    displayMode === mode 
+                                                        ? 'bg-blue-500 text-white' 
+                                                        : 'bg-gray-200 hover:bg-gray-300'
+                                                }`}
+                                            >
+                                                {mode === 'chinese' ? '國字' : 
+                                                 mode === 'both' ? '國字+注音' : '注音'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* 字型選擇 */}
+                                    <select
+                                        value={selectedFont}
+                                        onChange={(e) => setSelectedFont(e.target.value)}
+                                        className="text-sm border border-gray-300 rounded px-3 py-2"
+                                    >
+                                        {fontOptions.map(font => (
+                                            <option key={font.value} value={font.value}>
+                                                {font.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 播放控制面板 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                                        disabled={currentPage === 0}
+                                        className="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 
+                                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        ⏮️
+                                    </button>
+                                    
+                                    <button
+                                        onClick={playFullText}
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all text-white font-semibold ${
+                                            isPlaying 
+                                                ? 'bg-red-500 hover:bg-red-600' 
+                                                : 'bg-green-500 hover:bg-green-600'
+                                        }`}
+                                    >
+                                        {isPlaying ? '⏹️ 停止念讀' : '▶️ 全文念讀'}
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setCurrentPage(Math.min(getTotalPages() - 1, currentPage + 1))}
+                                        disabled={currentPage >= getTotalPages() - 1}
+                                        className="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 
+                                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        ⏭️
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                    <span className="font-medium">第 {currentPage + 1} / {getTotalPages()} 頁</span>
+                                    <span>總字數: {lessonData?.characters.length || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 文字網格 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                            <div className="grid grid-cols-10 gap-1 sm:gap-2">
+                                {renderCharacterGrid()}
+                            </div>
+                        </div>
+
+                        {/* 使用提示 */}
+                        <div className="bg-white rounded-lg shadow-md p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                <div>
+                                    <h4 className="font-semibold mb-2 text-blue-600">🎯 操作方式</h4>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• 🎵 點擊「全文念讀」自動播放全文</li>
+                                        <li>• 👆 點擊個別文字聆聽發音</li>
+                                        <li>• ⏮️⏭️ 使用箭頭切換頁面</li>
+                                        <li>• 🎨 選擇不同字型效果</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold mb-2 text-green-600">✨ 視覺效果</h4>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• 🟡 全文念讀時：<span className="bg-yellow-300 px-1 rounded">金色閃爍效果</span></li>
+                                        <li>• 🔵 點讀時：<span className="bg-blue-500 text-white px-1 rounded">藍色高亮效果</span></li>
+                                        <li>• 🟢 標點符號：<span className="bg-green-100 px-1 rounded">綠色背景</span></li>
+                                        <li>• 📱 支援觸控操作</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Text2SpeechApp />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課文生字念讀輔助系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style id="dynamic-fonts">
+        /* 動態載入的字型會在這裡添加 */
+        .font-system { font-family: system-ui, sans-serif; }
+    </style>
+    <style>
+        /* 播放效果動畫 */
+        .playing-effect {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+            color: white !important;
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.8);
+            transform: scale(1.15);
+            animation: playingPulse 0.6s ease-in-out infinite alternate;
+            border: 3px solid #d97706 !important;
+            z-index: 10;
+        }
+        
+        @keyframes playingPulse {
+            0% { box-shadow: 0 0 25px rgba(251, 191, 36, 0.8); }
+            100% { box-shadow: 0 0 35px rgba(217, 119, 6, 1); }
+        }
+        
+        .click-reading {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+            color: white !important;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
+            transform: scale(1.1);
+            border: 3px solid #1e40af !important;
+            z-index: 10;
+        }
+
+        /* 檔案拖放區域 */
+        .file-drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .file-drop-zone:hover {
+            border-color: #3b82f6;
+            background-color: #f8fafc;
+        }
+
+        .file-drop-zone.drag-over {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+        }
+
+        /* 字型預覽 */
+        .font-preview {
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 解析TXT內容 - 完全重寫，更準確
+        const parseTxtContent = (content) => {
+            console.log('🔍 開始解析TXT內容');
+            
+            // 移除分隔線
+            const cleanContent = content.replace(/={50,}/g, '').trim();
+            const lines = cleanContent.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                return { title: '空白課文', characters: [] };
+            }
+            
+            // 提取標題
+            let title = '課文內容';
+            if (lines[0]) {
+                let titleLine = lines[0].trim();
+                if (titleLine.includes('、')) {
+                    title = titleLine.split('、')[1] || titleLine;
+                } else {
+                    title = titleLine;
+                }
+                title = title.replace(/[()（）]/g, '').trim();
+            }
+            
+            const characters = [];
+            
+            // 處理每一行內容（跳過標題行）
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                console.log(`處理第${i}行:`, line);
+                
+                // 精確匹配 字(注音) 格式
+                let currentPos = 0;
+                while (currentPos < line.length) {
+                    let char = line[currentPos];
+                    let pinyin = '';
+                    
+                    // 檢查是否有注音
+                    if (currentPos + 1 < line.length && line[currentPos + 1] === '(') {
+                        // 尋找結束的括號
+                        let endPos = line.indexOf(')', currentPos + 2);
+                        if (endPos !== -1) {
+                            pinyin = line.substring(currentPos + 2, endPos);
+                            currentPos = endPos + 1;
+                        } else {
+                            currentPos++;
+                        }
+                    } else {
+                        currentPos++;
+                    }
+                    
+                    // 添加字符
+                    if (char && char.trim()) {
+                        const isPunctuation = /[，。！？、：；\s]/.test(char);
+                        characters.push({
+                            char: char,
+                            pinyin: pinyin,
+                            isPunctuation: isPunctuation
+                        });
+                        
+                        console.log(`字符: "${char}" 注音: "${pinyin}" 標點: ${isPunctuation}`);
+                    }
+                }
+            }
+            
+            console.log(`✅ 解析完成，共${characters.length}個字符`);
+            return { title, characters };
+        };
+
+        const Text2SpeechApp = () => {
+            // 狀態管理
+            const [currentView, setCurrentView] = useState('setup');
+            const [lessonData, setLessonData] = useState(null);
+            const [displayMode, setDisplayMode] = useState('both');
+            const [availableFonts, setAvailableFonts] = useState([
+                { name: '預設字型', className: 'font-system', loaded: true }
+            ]);
+            const [selectedFontIndex, setSelectedFontIndex] = useState(0);
+            const [currentPage, setCurrentPage] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1);
+            const [clickReadingIndex, setClickReadingIndex] = useState(-1);
+            const [audioContext, setAudioContext] = useState(null);
+            
+            const audioRef = useRef(null);
+            const CHARS_PER_PAGE = 70; // 10x7
+
+            // 初始化音訊上下文
+            useEffect(() => {
+                const initAudio = () => {
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        setAudioContext(ctx);
+                        console.log('🎵 音訊上下文初始化成功');
+                    } catch (error) {
+                        console.warn('⚠️ 音訊上下文初始化失敗:', error);
+                    }
+                };
+                initAudio();
+            }, []);
+
+            // 載入字型檔案
+            const loadFontFile = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const fontData = e.target.result;
+                            const fontName = file.name.replace('.ttf', '').replace('.otf', '');
+                            const fontClassName = `font-${Date.now()}`;
+                            
+                            // 創建字型CSS
+                            const fontFace = new FontFace(fontName, fontData);
+                            fontFace.load().then((loadedFont) => {
+                                document.fonts.add(loadedFont);
+                                
+                                // 添加CSS樣式
+                                const style = document.getElementById('dynamic-fonts');
+                                style.textContent += `
+                                    .${fontClassName} { 
+                                        font-family: "${fontName}", serif; 
+                                    }
+                                `;
+                                
+                                const newFont = {
+                                    name: fontName,
+                                    className: fontClassName,
+                                    loaded: true,
+                                    file: file.name
+                                };
+                                
+                                setAvailableFonts(prev => [...prev, newFont]);
+                                console.log('✅ 字型載入成功:', fontName);
+                                resolve(newFont);
+                            }).catch(reject);
+                        } catch (error) {
+                            console.error('❌ 字型載入失敗:', error);
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+            };
+
+            // 播放音檔 - 增強版本
+            const playAudio = async (pinyin) => {
+                if (!pinyin) {
+                    console.log('⚠️ 沒有注音符號，跳過播放');
+                    return;
+                }
+                
+                try {
+                    console.log(`🎵 嘗試播放: ${pinyin}`);
+                    
+                    // 停止之前的音檔
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                    }
+                    
+                    // 嘗試播放新音檔
+                    const audioPath = `./sounddata/${pinyin}.mp3`;
+                    const audio = new Audio(audioPath);
+                    audioRef.current = audio;
+                    
+                    // 設置音檔事件
+                    audio.oncanplaythrough = () => {
+                        console.log(`✅ 音檔載入成功: ${pinyin}`);
+                        audio.play().catch(error => {
+                            console.warn(`⚠️ 播放失敗: ${pinyin}`, error);
+                        });
+                    };
+                    
+                    audio.onerror = (error) => {
+                        console.warn(`❌ 音檔載入失敗: ${audioPath}`, error);
+                    };
+                    
+                    audio.onended = () => {
+                        console.log(`🏁 播放結束: ${pinyin}`);
+                    };
+                    
+                } catch (error) {
+                    console.error('❌ 播放音檔時發生錯誤:', error);
+                }
+            };
+
+            // 單字點讀
+            const playCharacter = (char, pinyin, index) => {
+                console.log(`👆 點讀: "${char}" 注音: "${pinyin}"`);
+                setClickReadingIndex(index);
+                playAudio(pinyin);
+                
+                setTimeout(() => {
+                    setClickReadingIndex(-1);
+                }, 800);
+            };
+
+            // 全文朗讀 - 修復版本
+            const playFullText = () => {
+                if (!lessonData || lessonData.characters.length === 0) {
+                    console.warn('⚠️ 沒有課文資料可以播放');
+                    return;
+                }
+                
+                if (isPlaying) {
+                    // 停止播放
+                    console.log('⏹️ 停止全文朗讀');
+                    setIsPlaying(false);
+                    setCurrentPlayingIndex(-1);
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
+                    return;
+                }
+                
+                // 開始播放
+                console.log('▶️ 開始全文朗讀');
+                setIsPlaying(true);
+                
+                let index = 0;
+                const characters = lessonData.characters;
+                
+                const playNext = () => {
+                    if (!isPlaying || index >= characters.length) {
+                        console.log('🏁 全文朗讀結束');
+                        setIsPlaying(false);
+                        setCurrentPlayingIndex(-1);
+                        return;
+                    }
+                    
+                    const char = characters[index];
+                    console.log(`正在播放第${index + 1}/${characters.length}個字: "${char.char}"`);
+                    
+                    setCurrentPlayingIndex(index);
+                    
+                    if (char.pinyin) {
+                        playAudio(char.pinyin);
+                    }
+                    
+                    // 設置下一個字的延遲時間
+                    const delay = char.isPunctuation ? 1200 : 800;
+                    
+                    setTimeout(() => {
+                        if (isPlaying) {
+                            index++;
+                            setTimeout(playNext, 300);
+                        }
+                    }, delay);
+                };
+                
+                playNext();
+            };
+
+            // 處理檔案上傳（TXT和字型）
+            const handleFileUpload = async (files) => {
+                for (let file of files) {
+                    console.log(`📁 處理檔案: ${file.name} (${file.type})`);
+                    
+                    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                        // 處理TXT課文檔案
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const content = e.target.result;
+                            const parsed = parseTxtContent(content);
+                            setLessonData(parsed);
+                            setCurrentView('lesson');
+                            setCurrentPage(0);
+                            console.log('✅ TXT檔案載入成功');
+                        };
+                        reader.readAsText(file, 'UTF-8');
+                    }
+                    else if (file.name.endsWith('.ttf') || file.name.endsWith('.otf')) {
+                        // 處理字型檔案
+                        try {
+                            await loadFontFile(file);
+                            console.log(`✅ 字型檔案載入成功: ${file.name}`);
+                        } catch (error) {
+                            console.error(`❌ 字型檔案載入失敗: ${file.name}`, error);
+                        }
+                    }
+                }
+            };
+
+            // 拖放處理
+            const handleDrop = (e) => {
+                e.preventDefault();
+                const files = Array.from(e.dataTransfer.files);
+                handleFileUpload(files);
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+            };
+
+            // 獲取當前頁面的字符
+            const getCurrentPageCharacters = () => {
+                if (!lessonData) return [];
+                const start = currentPage * CHARS_PER_PAGE;
+                const end = start + CHARS_PER_PAGE;
+                return lessonData.characters.slice(start, end);
+            };
+
+            // 計算總頁數
+            const getTotalPages = () => {
+                if (!lessonData) return 0;
+                return Math.ceil(lessonData.characters.length / CHARS_PER_PAGE);
+            };
+
+            // 渲染字符網格 - 確保10x7佈局
+            const renderCharacterGrid = () => {
+                const characters = getCurrentPageCharacters();
+                const selectedFont = availableFonts[selectedFontIndex];
+                const fontClass = selectedFont ? selectedFont.className : 'font-system';
+                
+                const grid = [];
+                
+                // 強制顯示70個格子 (7行 × 10列)
+                for (let row = 0; row < 7; row++) {
+                    for (let col = 0; col < 10; col++) {
+                        const index = row * 10 + col;
+                        const char = characters[index];
+                        const globalIndex = currentPage * CHARS_PER_PAGE + index;
+                        const isCurrentlyPlaying = currentPlayingIndex === globalIndex;
+                        const isClickReading = clickReadingIndex === globalIndex;
+                        
+                        grid.push(
+                            <div
+                                key={`${row}-${col}`}
+                                className={`
+                                    aspect-square border-2 border-gray-400 flex flex-col items-center justify-center
+                                    cursor-pointer transition-all duration-200 min-h-[70px] sm:min-h-[90px]
+                                    ${char ? 'hover:bg-blue-100 hover:border-blue-500' : 'bg-gray-100'}
+                                    ${char?.isPunctuation ? 'bg-green-100' : ''}
+                                    ${isCurrentlyPlaying ? 'playing-effect' : ''}
+                                    ${isClickReading ? 'click-reading' : ''}
+                                `}
+                                onClick={() => char && playCharacter(char.char, char.pinyin, globalIndex)}
+                            >
+                                {char && (
+                                    <div className="flex flex-col items-center justify-center h-full p-1">
+                                        {/* 國字顯示 */}
+                                        {(displayMode === 'chinese' || displayMode === 'both') && (
+                                            <div className={`font-bold text-xl sm:text-2xl ${fontClass}`}>
+                                                {char.char}
+                                            </div>
+                                        )}
+                                        
+                                        {/* 注音顯示 */}
+                                        {(displayMode === 'pinyin' || displayMode === 'both') && char.pinyin && (
+                                            <div className="text-xs sm:text-sm text-red-600 mt-1">
+                                                {char.pinyin}
+                                            </div>
+                                        )}
+                                        
+                                        {/* 純注音模式 */}
+                                        {displayMode === 'pinyin' && !char.pinyin && (
+                                            <div className="text-lg text-gray-500">
+                                                {char.char}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                }
+                
+                return grid;
+            };
+
+            // 設置頁面
+            if (currentView === 'setup') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+                        <div className="max-w-4xl mx-auto">
+                            <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+                                📚 課文生字念讀輔助系統
+                            </h1>
+                            
+                            {/* 檔案上傳區域 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                <h2 className="text-2xl font-semibold mb-4 text-center">
+                                    📁 載入課文和字型檔案
+                                </h2>
+                                
+                                <div 
+                                    className="file-drop-zone mb-6"
+                                    onDrop={handleDrop}
+                                    onDragOver={handleDragOver}
+                                >
+                                    <div className="mb-4">
+                                        <p className="text-xl mb-2">🎯 拖放檔案到這裡，或點擊選擇</p>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept=".txt,.ttf,.otf"
+                                            onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                        />
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        <p><strong>✅ TXT檔案：</strong> 課文內容，格式如 做(ㄗㄨㄛˋ)早(ㄗㄠˇ)操(ㄘㄠ)</p>
+                                        <p><strong>🎨 TTF/OTF檔案：</strong> 字型檔案，將自動載入可選擇</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 已載入的字型列表 */}
+                            {availableFonts.length > 1 && (
+                                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                    <h3 className="text-xl font-semibold mb-4">🎨 已載入的字型</h3>
+                                    <div className="space-y-3">
+                                        {availableFonts.map((font, index) => (
+                                            <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                                                <div>
+                                                    <span className="font-medium">{font.name}</span>
+                                                    {font.file && <span className="text-sm text-gray-500 ml-2">({font.file})</span>}
+                                                </div>
+                                                <div className={`font-preview ${font.className}`}>
+                                                    做早操
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 系統說明 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-xl font-semibold mb-4 text-center">📋 使用說明</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                    <div>
+                                        <h4 className="font-semibold mb-2 text-blue-600">📁 所需檔案結構</h4>
+                                        <div className="bg-gray-100 p-3 rounded font-mono text-xs">
+                                            <pre>{`專案資料夾/
+├── index.html (此檔案)
+├── DATA/
+│   ├── 1上康軒/
+│   │   └── 第一課.txt
+│   └── ...
+├── sounddata/
+│   ├── ㄧ.mp3
+│   ├── ㄧˊ.mp3
+│   └── ...
+└── fonts/
+    ├── 字型1.ttf
+    └── 字型2.ttf`}</pre>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold mb-2 text-green-600">🎯 檔案格式</h4>
+                                        <ul className="space-y-2 text-gray-600">
+                                            <li><strong>TXT課文：</strong> 字(注音)格式</li>
+                                            <li><strong>音檔：</strong> 注音符號.mp3</li>
+                                            <li><strong>字型：</strong> .ttf 或 .otf 檔案</li>
+                                            <li><strong>網格：</strong> 10列×7行=70字/頁</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 學習頁面
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-2 sm:p-4">
+                    <div className="max-w-6xl mx-auto">
+                        {/* 標題控制列 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => {
+                                            setIsPlaying(false);
+                                            setCurrentPlayingIndex(-1);
+                                            setCurrentView('setup');
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                                    >
+                                        🏠 返回設置
+                                    </button>
+                                    <h1 className="text-lg font-bold text-gray-800">
+                                        {lessonData?.title || '課文學習'}
+                                    </h1>
+                                </div>
+                                
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {/* 顯示模式 */}
+                                    <div className="flex gap-1">
+                                        {[
+                                            {mode: 'chinese', label: '國字'},
+                                            {mode: 'both', label: '國字+注音'},
+                                            {mode: 'pinyin', label: '注音'}
+                                        ].map(({mode, label}) => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setDisplayMode(mode)}
+                                                className={`px-3 py-2 rounded text-sm ${
+                                                    displayMode === mode 
+                                                        ? 'bg-blue-500 text-white' 
+                                                        : 'bg-gray-200 hover:bg-gray-300'
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* 字型選擇 */}
+                                    <select
+                                        value={selectedFontIndex}
+                                        onChange={(e) => setSelectedFontIndex(parseInt(e.target.value))}
+                                        className="text-sm border border-gray-300 rounded px-3 py-2"
+                                    >
+                                        {availableFonts.map((font, index) => (
+                                            <option key={index} value={index}>
+                                                🎨 {font.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 播放控制 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                                        disabled={currentPage === 0}
+                                        className="p-3 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                    >
+                                        ⏮️
+                                    </button>
+                                    
+                                    <button
+                                        onClick={playFullText}
+                                        className={`px-6 py-3 rounded-lg font-semibold text-white ${
+                                            isPlaying 
+                                                ? 'bg-red-500 hover:bg-red-600' 
+                                                : 'bg-green-500 hover:bg-green-600'
+                                        }`}
+                                    >
+                                        {isPlaying ? '⏹️ 停止念讀' : '▶️ 全文念讀'}
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setCurrentPage(Math.min(getTotalPages() - 1, currentPage + 1))}
+                                        disabled={currentPage >= getTotalPages() - 1}
+                                        className="p-3 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                    >
+                                        ⏭️
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-sm font-medium text-gray-700">
+                                    <span>📄 第 {currentPage + 1} / {getTotalPages()} 頁</span>
+                                    <span>📝 {lessonData?.characters.length || 0} 字</span>
+                                    {isPlaying && (
+                                        <span className="text-orange-600 animate-pulse">
+                                            🎵 播放中... {currentPlayingIndex + 1}/{lessonData?.characters.length || 0}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 10x7文字網格 */}
+                        <div className="bg-white rounded-lg shadow-md p-4">
+                            <div className="grid grid-cols-10 gap-1">
+                                {renderCharacterGrid()}
+                            </div>
+                        </div>
+
+                        {/* 功能說明 */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <h4 className="font-semibold text-blue-600 mb-2">🎯 操作方式</h4>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• 👆 點擊文字：單字發音</li>
+                                        <li>• ▶️ 全文念讀：自動播放</li>
+                                        <li>• ⏮️⏭️ 翻頁：切換內容</li>
+                                        <li>• 🎨 選擇字型：即時變化</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-green-600 mb-2">✨ 視覺效果</h4>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• 🟡 播放中：金色閃爍</li>
+                                        <li>• 🔵 點讀：藍色高亮</li>
+                                        <li>• 🟢 標點：綠色標示</li>
+                                        <li>• 📱 觸控：完全支援</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-purple-600 mb-2">🔧 技術資訊</h4>
+                                    <ul className="space-y-1 text-gray-600">
+                                        <li>• 網格：10列×7行</li>
+                                        <li>• 音檔：sounddata/*.mp3</li>
+                                        <li>• 字型：動態載入TTF</li>
+                                        <li>• 格式：字(注音)解析</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Text2SpeechApp />);
+    </script>
+</body>
+</html>
