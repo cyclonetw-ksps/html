@@ -394,7 +394,7 @@
     </style>
 </head>
 <body>
-    <!-- 返回按鈕 -->
+        <!-- 返回按鈕 -->
     <button class="back-button" onclick="backToSelection()" style="display: none;">← 返回選擇</button>
 
     <!-- 目錄與課文選擇畫面 -->
@@ -453,9 +453,7 @@
                 <button class="control-button" style="background: #ff6b6b; color: white; display: none;" onclick="stopPlaying()" id="stopBtn">
                     ⏹ 停止
                 </button>
-            </div>
-            <div class="control-group">
-                <span style="color: white; font-weight: bold;">速度：</span>
+                <span style="color: white; font-weight: bold; margin-left: 10px;">速度：</span>
                 <select id="speedSelector" class="control-button" onchange="changeSpeed()">
                     <option value="slow">慢速</option>
                     <option value="normal" selected>正常</option>
@@ -867,8 +865,8 @@
             updatePageInfo();
         }
 
-        // 播放聲音（返回 Promise）
-        function playSound(zhuyin, element) {
+        // 播放聲音（支援強制切斷）
+        function playSound(zhuyin, element, forceDuration = null) {
             return new Promise((resolve) => {
                 if (!zhuyin || zhuyin === '\n') {
                     resolve();
@@ -878,6 +876,7 @@
                 // 停止之前的音檔
                 if (playingAudio) {
                     playingAudio.pause();
+                    playingAudio.currentTime = 0;
                     playingAudio = null;
                 }
                 
@@ -893,13 +892,41 @@
                 
                 // 建立音檔路徑
                 const soundFile = soundBasePath + zhuyin + '.mp3';
-                console.log('播放:', soundFile);
                 
                 const audio = new Audio(soundFile);
                 playingAudio = audio;
                 
-                // 設定結束事件
+                // 設定強制播放時長
+                let playDuration = null;
+                if (forceDuration !== null) {
+                    playDuration = forceDuration;
+                } else {
+                    // 根據速度模式設定預設播放時長（毫秒）
+                    const durationSettings = {
+                        slow: 700,      // 0.7秒
+                        normal: 500,    // 0.5秒
+                        fast: 350,      // 0.35秒
+                        veryfast: 250   // 0.25秒
+                    };
+                    playDuration = durationSettings[playSpeed] || 500;
+                }
+                
+                // 設定計時器，時間到就切斷
+                const cutoffTimer = setTimeout(() => {
+                    if (playingAudio === audio) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        playingAudio = null;
+                        if (element) {
+                            element.classList.remove('playing');
+                        }
+                        resolve();
+                    }
+                }, playDuration);
+                
+                // 如果音檔提前結束（比設定時間短）
                 audio.onended = () => {
+                    clearTimeout(cutoffTimer);
                     if (element) {
                         element.classList.remove('playing');
                     }
@@ -907,8 +934,9 @@
                     resolve();
                 };
                 
-                // 設定錯誤處理
+                // 錯誤處理
                 audio.onerror = () => {
+                    clearTimeout(cutoffTimer);
                     console.error(`無法播放音檔: ${soundFile}`);
                     if (element) {
                         element.classList.remove('playing');
@@ -917,18 +945,35 @@
                     
                     // 對於輕聲符號，不使用語音合成
                     if (zhuyin.includes('˙')) {
-                        console.log('輕聲符號，跳過語音合成');
                         resolve();
                         return;
                     }
                     
-                    // 使用語音合成作為備用方案
+                    // 使用語音合成作為備用
                     try {
                         const utterance = new SpeechSynthesisUtterance(zhuyin);
                         utterance.lang = 'zh-TW';
-                        utterance.rate = 0.8;
+                        
+                        // 調整語音合成速度
+                        const rateSettings = {
+                            slow: 0.7,
+                            normal: 1.0,
+                            fast: 1.3,
+                            veryfast: 1.6
+                        };
+                        utterance.rate = rateSettings[playSpeed] || 1.0;
+                        
+                        // 同樣設定最大播放時長
+                        const synthTimer = setTimeout(() => {
+                            speechSynthesis.cancel();
+                            if (element) {
+                                element.classList.remove('playing');
+                            }
+                            resolve();
+                        }, playDuration);
                         
                         utterance.onend = () => {
+                            clearTimeout(synthTimer);
                             if (element) {
                                 element.classList.remove('playing');
                             }
@@ -942,8 +987,9 @@
                     }
                 };
                 
-                // 嘗試播放
+                // 開始播放
                 audio.play().catch(error => {
+                    clearTimeout(cutoffTimer);
                     console.error('播放錯誤:', error);
                     if (element) {
                         element.classList.remove('playing');
@@ -1097,6 +1143,21 @@
             });
         }
 
+        // 更改播放速度
+        function changeSpeed() {
+            playSpeed = document.getElementById('speedSelector').value;
+            console.log('播放速度已調整為:', playSpeed);
+            
+            // 顯示速度提示
+            const speedText = {
+                slow: '慢速模式',
+                normal: '正常速度',
+                fast: '快速模式',
+                veryfast: '極速模式'
+            };
+            showStatus(`已切換至${speedText[playSpeed]}`);
+        }
+
         // 上一頁
         function previousPage() {
             if (currentPage > 0) {
@@ -1160,6 +1221,24 @@
                     playAll();
                 } else if (e.key === 'Escape') {
                     stopPlaying();
+                } else if (e.key === 'ArrowUp') {
+                    // 加速
+                    e.preventDefault();
+                    const speedSelect = document.getElementById('speedSelector');
+                    const currentIndex = speedSelect.selectedIndex;
+                    if (currentIndex < speedSelect.options.length - 1) {
+                        speedSelect.selectedIndex = currentIndex + 1;
+                        changeSpeed();
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    // 減速
+                    e.preventDefault();
+                    const speedSelect = document.getElementById('speedSelector');
+                    const currentIndex = speedSelect.selectedIndex;
+                    if (currentIndex > 0) {
+                        speedSelect.selectedIndex = currentIndex - 1;
+                        changeSpeed();
+                    }
                 }
             }
         });
@@ -1176,6 +1255,12 @@
         console.log('');
         console.log('音檔路徑:', soundBasePath);
         console.log('輕聲音檔: ㄉㄜ˙.mp3, ㄇㄚ˙.mp3');
+        console.log('');
+        console.log('快捷鍵:');
+        console.log('  空白鍵: 播放/暫停');
+        console.log('  ← →: 上/下一頁');
+        console.log('  ↑ ↓: 加速/減速');
+        console.log('  Esc: 停止播放');
     </script>
 </body>
 </html>
